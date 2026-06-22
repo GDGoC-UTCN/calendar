@@ -335,3 +335,43 @@ CLIENT_ORIGIN=https://your-netlify-site.netlify.app
 ```
 
 This allows the browser and Socket.IO connection from your Netlify frontend.
+
+
+---
+
+## Render deployment fix
+
+If Render logs show:
+
+```txt
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'express' imported from /opt/render/project/src/server/index.js
+```
+
+that means the root install ran, but `/server` dependencies were not installed. The root `package.json` now includes a `postinstall` script that installs both backend and frontend dependencies automatically.
+
+Recommended Render settings:
+
+```txt
+Runtime: Node
+Node version: 20
+Build command: npm install && npm run build
+Start command: npm start
+```
+
+For a free demo without guaranteed SQLite persistence:
+
+```txt
+DATABASE_PATH=/opt/render/project/src/server/data/database.sqlite
+```
+
+For production with SQLite persistence, add a Render Persistent Disk and mount it to a stable path such as `/var/data`, then set:
+
+```txt
+DATABASE_PATH=/var/data/database.sqlite
+```
+
+After the first deploy, if Socket.IO/CORS fails because your frontend and backend are on different domains, set:
+
+```txt
+CLIENT_ORIGIN=https://your-render-or-netlify-domain
+```
