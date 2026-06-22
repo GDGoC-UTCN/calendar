@@ -3,10 +3,11 @@ import { CSS } from '@dnd-kit/utilities';
 import { Clock, GripVertical } from 'lucide-react';
 import { TYPE_ICONS } from '../lib/constants.js';
 
-export function EventCard({ event, onClick }) {
+export function EventCard({ event, onClick, canEdit }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: event.id,
-    data: { event }
+    data: { event },
+    disabled: !canEdit
   });
 
   const style = {
@@ -18,7 +19,7 @@ export function EventCard({ event, onClick }) {
   return (
     <button
       ref={setNodeRef}
-      className={`event-card ${isDragging ? 'is-dragging' : ''}`}
+      className={`event-card ${isDragging ? 'is-dragging' : ''} ${!canEdit ? 'read-only' : ''}`}
       type="button"
       style={style}
       onClick={(clickEvent) => {

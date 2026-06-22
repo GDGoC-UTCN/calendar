@@ -20,10 +20,11 @@ function buildInitialForm(initialDate) {
   };
 }
 
-export function EventModal({ event, initialDate, saving, onClose, onSave, onAskDelete }) {
+export function EventModal({ event, initialDate, saving, readOnly = false, onClose, onSave, onAskDelete }) {
   const [form, setForm] = useState(() => event || buildInitialForm(initialDate));
   const [localError, setLocalError] = useState('');
   const isEditing = Boolean(event?.id);
+  const isDetailsOnly = readOnly && isEditing;
 
   useEffect(() => {
     setForm(event || buildInitialForm(initialDate));
@@ -57,8 +58,8 @@ export function EventModal({ event, initialDate, saving, onClose, onSave, onAskD
       <section className="event-modal" role="dialog" aria-modal="true" aria-label={isEditing ? 'Edit event' : 'Create event'} onMouseDown={(event) => event.stopPropagation()}>
         <div className="modal-header">
           <div>
-            <span className="mini-eyebrow">{isEditing ? 'Edit event' : 'New event'}</span>
-            <h2><CalendarPlus size={22} /> {isEditing ? 'Update GDG event' : 'Create GDG event'}</h2>
+            <span className="mini-eyebrow">{isDetailsOnly ? 'Event details' : isEditing ? 'Edit event' : 'New event'}</span>
+            <h2><CalendarPlus size={22} /> {isDetailsOnly ? 'View GDG event' : isEditing ? 'Update GDG event' : 'Create GDG event'}</h2>
             <p>{headerDate}</p>
           </div>
           <button className="icon-button" type="button" onClick={onClose} aria-label="Close modal"><X size={20} /></button>
@@ -67,26 +68,27 @@ export function EventModal({ event, initialDate, saving, onClose, onSave, onAskD
         <form className="modal-form" onSubmit={handleSubmit}>
           <label className="full-field">
             Title
-            <input value={form.title} onChange={(event) => updateField('title', event.target.value)} placeholder="e.g. Google Cloud Study Jam" autoFocus />
+            <input disabled={readOnly} value={form.title} onChange={(event) => updateField('title', event.target.value)} placeholder="e.g. Google Cloud Study Jam" autoFocus />
           </label>
 
           <label className="full-field">
             Description
-            <textarea value={form.description || ''} onChange={(event) => updateField('description', event.target.value)} placeholder="Short description for the team and community" />
+            <textarea disabled={readOnly} value={form.description || ''} onChange={(event) => updateField('description', event.target.value)} placeholder="Short description for the team and community" />
           </label>
 
           <div className="form-grid">
             <label>
               Date
-              <input type="date" value={form.date} onChange={(event) => updateField('date', event.target.value)} />
+              <input disabled={readOnly} type="date" value={form.date} onChange={(event) => updateField('date', event.target.value)} />
             </label>
             <label>
               Time
-              <input type="time" value={form.time || ''} onChange={(event) => updateField('time', event.target.value)} />
+              <input disabled={readOnly} type="time" value={form.time || ''} onChange={(event) => updateField('time', event.target.value)} />
             </label>
             <label>
               Type
               <select
+                disabled={readOnly}
                 value={form.type}
                 onChange={(event) => {
                   const type = event.target.value;
@@ -102,7 +104,7 @@ export function EventModal({ event, initialDate, saving, onClose, onSave, onAskD
             </label>
             <label>
               Status
-              <select value={form.status} onChange={(event) => updateField('status', event.target.value)}>
+              <select disabled={readOnly} value={form.status} onChange={(event) => updateField('status', event.target.value)}>
                 {editableStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
               </select>
             </label>
@@ -110,31 +112,33 @@ export function EventModal({ event, initialDate, saving, onClose, onSave, onAskD
               Location
               <span className="input-with-icon">
                 <MapPin size={15} />
-                <input value={form.location || ''} onChange={(event) => updateField('location', event.target.value)} placeholder="UTCN Hub, F14, online..." />
+                <input disabled={readOnly} value={form.location || ''} onChange={(event) => updateField('location', event.target.value)} placeholder="UTCN Hub, F14, online..." />
               </span>
             </label>
             <label>
               Color / tag
-              <input type="color" value={form.color || '#4285F4'} onChange={(event) => updateField('color', event.target.value)} />
+              <input disabled={readOnly} type="color" value={form.color || '#4285F4'} onChange={(event) => updateField('color', event.target.value)} />
             </label>
           </div>
 
           <label className="full-field">
             Notes / details
-            <textarea value={form.notes || ''} onChange={(event) => updateField('notes', event.target.value)} placeholder="Logistics, sponsors, speakers, links, ideas..." />
+            <textarea disabled={readOnly} value={form.notes || ''} onChange={(event) => updateField('notes', event.target.value)} placeholder="Logistics, sponsors, speakers, links, ideas..." />
           </label>
 
           {localError && <div className="form-error">{localError}</div>}
 
           <div className="modal-actions">
-            {isEditing && (
+            {isEditing && !readOnly && (
               <button className="danger-button" type="button" onClick={() => onAskDelete(form)}>
                 <Trash2 size={16} /> Delete
               </button>
             )}
             <div className="right-actions">
-              <button className="ghost-button" type="button" onClick={onClose}>Cancel</button>
-              <button className="primary-button" type="submit" disabled={saving}>{saving ? 'Saving...' : isEditing ? 'Save changes' : 'Create event'}</button>
+              <button className="ghost-button" type="button" onClick={onClose}>{readOnly ? 'Close' : 'Cancel'}</button>
+              {!readOnly && (
+                <button className="primary-button" type="submit" disabled={saving}>{saving ? 'Saving...' : isEditing ? 'Save changes' : 'Create event'}</button>
+              )}
             </div>
           </div>
         </form>

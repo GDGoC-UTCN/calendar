@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { CalendarMonth } from './components/CalendarMonth.jsx';
+import { AccessPanel } from './components/AccessPanel.jsx';
 import { ConfirmModal } from './components/ConfirmModal.jsx';
 import { EventModal } from './components/EventModal.jsx';
 import { Filters } from './components/Filters.jsx';
@@ -10,6 +11,7 @@ import { Toast } from './components/Toast.jsx';
 import { UpcomingEvents } from './components/UpcomingEvents.jsx';
 import { ACADEMIC_MONTHS } from './lib/constants.js';
 import { useEvents } from './hooks/useEvents.js';
+import { api } from './lib/api.js';
 
 const defaultFilters = {
   search: '',
@@ -18,6 +20,10 @@ const defaultFilters = {
 };
 
 export default function App() {
+  const [adminCode, setAdminCode] = useState(() => localStorage.getItem('gdg-utcn-admin-code') || '');
+  const [isEditor, setIsEditor] = useState(false);
+  const [accessStatus, setAccessStatus] = useState(adminCode ? 'checking' : 'viewer');
+
   const {
     events,
     loading,
@@ -28,7 +34,7 @@ export default function App() {
     updateEvent,
     deleteEvent,
     setError
-  } = useEvents();
+  } = useEvents(isEditor ? adminCode : '');
 
   const [filters, setFilters] = useState(defaultFilters);
   const [modalState, setModalState] = useState({ open: false, event: null, initialDate: '2026-09-01' });
@@ -40,6 +46,62 @@ export default function App() {
       activationConstraint: { distance: 6 }
     })
   );
+
+  useEffect(() => {
+    if (!adminCode) {
+      setIsEditor(false);
+      setAccessStatus('viewer');
+      return;
+    }
+
+    let isMounted = true;
+    setAccessStatus('checking');
+
+    api.verifyAdminCode(adminCode)
+      .then(() => {
+        if (!isMounted) return;
+        setIsEditor(true);
+        setAccessStatus('editor');
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        localStorage.removeItem('gdg-utcn-admin-code');
+        setAdminCode('');
+        setIsEditor(false);
+        setAccessStatus('viewer');
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [adminCode]);
+
+  async function unlockEditing(code) {
+    setAccessStatus('checking');
+    try {
+      await api.verifyAdminCode(code);
+      localStorage.setItem('gdg-utcn-admin-code', code);
+      setAdminCode(code);
+      setIsEditor(true);
+      setAccessStatus('editor');
+      setToast({ type: 'success', message: 'Organizer mode unlocked.' });
+      return true;
+    } catch (err) {
+      localStorage.removeItem('gdg-utcn-admin-code');
+      setIsEditor(false);
+      setAccessStatus('viewer');
+      setToast({ type: 'error', message: err.message || 'Invalid organizer code.' });
+      return false;
+    }
+  }
+
+  function lockEditing() {
+    localStorage.removeItem('gdg-utcn-admin-code');
+    setAdminCode('');
+    setIsEditor(false);
+    setAccessStatus('viewer');
+    setToast({ type: 'success', message: 'Editing locked. Viewer mode is active.' });
+  }
 
   const filteredEvents = useMemo(() => {
     const search = filters.search.trim().toLowerCase();
@@ -64,6 +126,11 @@ export default function App() {
   }, [filteredEvents]);
 
   function openCreateModal(dateKey) {
+    if (!isEditor) {
+      setToast({ type: 'error', message: 'Viewer mode: enter the organizer code to add or move events.' });
+      return;
+    }
+
     setModalState({ open: true, event: null, initialDate: dateKey });
   }
 
@@ -76,6 +143,11 @@ export default function App() {
   }
 
   async function handleSaveEvent(form) {
+    if (!isEditor) {
+      setToast({ type: 'error', message: 'Organizer code required to save changes.' });
+      return;
+    }
+
     const payload = {
       title: form.title,
       description: form.description,
@@ -100,6 +172,11 @@ export default function App() {
   }
 
   async function handleDeleteEvent() {
+    if (!isEditor) {
+      setToast({ type: 'error', message: 'Organizer code required to delete events.' });
+      return;
+    }
+
     if (!pendingDelete) return;
     try {
       await deleteEvent(pendingDelete.id);
@@ -112,6 +189,7 @@ export default function App() {
   }
 
   async function handleDragEnd({ active, over }) {
+    if (!isEditor) return;
     if (!over) return;
 
     const draggedEvent = active.data.current?.event;
@@ -141,6 +219,12 @@ export default function App() {
 
       <main className="planner-layout">
         <div className="sidebar-stack">
+          <AccessPanel
+            isEditor={isEditor}
+            accessStatus={accessStatus}
+            onUnlock={unlockEditing}
+            onLock={lockEditing}
+          />
           <Filters
             filters={filters}
             onChange={setFilters}
@@ -156,7 +240,7 @@ export default function App() {
               <h2>September 2026 - August 2027</h2>
             </div>
             <button className="primary-button" type="button" onClick={() => openCreateModal('2026-09-01')}>
-              + Add event
+              {isEditor ? '+ Add event' : 'Unlock to add'}
             </button>
           </div>
 
@@ -190,6 +274,7 @@ export default function App() {
                   eventsByDate={filteredEventsByDate}
                   onDayClick={openCreateModal}
                   onEventClick={openEditModal}
+                  canEdit={isEditor}
                 />
               ))}
             </div>
@@ -202,6 +287,7 @@ export default function App() {
           event={modalState.event}
           initialDate={modalState.initialDate}
           saving={saving}
+          readOnly={!isEditor && Boolean(modalState.event)}
           onClose={closeModal}
           onSave={handleSaveEvent}
           onAskDelete={setPendingDelete}

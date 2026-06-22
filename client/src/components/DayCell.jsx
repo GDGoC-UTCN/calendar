@@ -2,10 +2,10 @@ import { useDroppable } from '@dnd-kit/core';
 import { Plus } from 'lucide-react';
 import { EventCard } from './EventCard.jsx';
 
-export function DayCell({ cell, events, onDayClick, onEventClick }) {
+export function DayCell({ cell, events, onDayClick, onEventClick, canEdit }) {
   const { isOver, setNodeRef } = useDroppable({
     id: cell.dateKey || cell.key,
-    disabled: cell.type !== 'day'
+    disabled: cell.type !== 'day' || !canEdit
   });
 
   if (cell.type === 'empty') {
@@ -35,7 +35,7 @@ export function DayCell({ cell, events, onDayClick, onEventClick }) {
 
       <span className="events-stack">
         {events.map((event) => (
-          <EventCard event={event} key={event.id} onClick={onEventClick} />
+          <EventCard event={event} key={event.id} onClick={onEventClick} canEdit={canEdit} />
         ))}
       </span>
     </div>

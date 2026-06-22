@@ -3,7 +3,7 @@ import { DayCell } from './DayCell.jsx';
 
 const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-export function CalendarMonth({ month, eventsByDate, onDayClick, onEventClick }) {
+export function CalendarMonth({ month, eventsByDate, onDayClick, onEventClick, canEdit }) {
   const cells = getMonthCells(month.year, month.month);
 
   return (
@@ -28,6 +28,7 @@ export function CalendarMonth({ month, eventsByDate, onDayClick, onEventClick })
             events={cell.type === 'day' ? eventsByDate[cell.dateKey] || [] : []}
             onDayClick={onDayClick}
             onEventClick={onEventClick}
+            canEdit={canEdit}
           />
         ))}
       </div>

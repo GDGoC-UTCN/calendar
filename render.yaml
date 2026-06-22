@@ -10,3 +10,5 @@ services:
         value: 20
       - key: DATABASE_PATH
         value: /opt/render/project/src/server/data/database.sqlite
+      - key: ADMIN_CODE
+        value: GDGoCEIMAITARI

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { io } from 'socket.io-client';
 import { api, SOCKET_BASE } from '../lib/api.js';
 
-export function useEvents() {
+export function useEvents(adminCode = '') {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,13 +45,13 @@ export function useEvents() {
   const createEvent = useCallback(async (event) => {
     setSaving(true);
     try {
-      const saved = await api.createEvent(event);
+      const saved = await api.createEvent(event, adminCode);
       setEvents((current) => [...current, saved].sort(sortEvents));
       return saved;
     } finally {
       setSaving(false);
     }
-  }, []);
+  }, [adminCode]);
 
   const updateEvent = useCallback(async (id, event) => {
     setSaving(true);
@@ -59,7 +59,7 @@ export function useEvents() {
     setEvents((current) => current.map((item) => item.id === id ? { ...item, ...event } : item).sort(sortEvents));
 
     try {
-      const saved = await api.updateEvent(id, event);
+      const saved = await api.updateEvent(id, event, adminCode);
       setEvents((current) => current.map((item) => item.id === id ? saved : item).sort(sortEvents));
       return saved;
     } catch (err) {
@@ -68,7 +68,7 @@ export function useEvents() {
     } finally {
       setSaving(false);
     }
-  }, [events]);
+  }, [events, adminCode]);
 
   const deleteEvent = useCallback(async (id) => {
     setSaving(true);
@@ -76,7 +76,7 @@ export function useEvents() {
     setEvents((current) => current.filter((item) => item.id !== id));
 
     try {
-      await api.deleteEvent(id);
+      await api.deleteEvent(id, adminCode);
       return true;
     } catch (err) {
       setEvents(previousEvents);
@@ -84,7 +84,7 @@ export function useEvents() {
     } finally {
       setSaving(false);
     }
-  }, [events]);
+  }, [events, adminCode]);
 
   const eventsByDate = useMemo(() => {
     return events.reduce((acc, event) => {

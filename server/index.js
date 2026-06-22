@@ -18,6 +18,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = Number(process.env.PORT || 4000);
+const ADMIN_CODE = process.env.ADMIN_CODE || 'GDGoCEIMAITARI';
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173,http://localhost:4000';
 const allowedOrigins = CLIENT_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean);
 
@@ -47,6 +48,21 @@ function asyncHandler(handler) {
   };
 }
 
+function hasValidAdminCode(req) {
+  const providedCode = String(req.headers['x-admin-code'] || '').trim();
+  return Boolean(ADMIN_CODE) && providedCode === ADMIN_CODE;
+}
+
+function requireAdminCode(req, res, next) {
+  if (hasValidAdminCode(req)) {
+    return next();
+  }
+
+  return res.status(403).json({
+    error: 'Organizer access code required. View mode is allowed, but creating, editing, deleting, or moving events requires the GDG organizer code.'
+  });
+}
+
 app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
@@ -54,6 +70,14 @@ app.get('/api/health', (req, res) => {
     databasePath,
     timestamp: new Date().toISOString()
   });
+});
+
+app.post('/api/auth/verify', (req, res) => {
+  if (!hasValidAdminCode(req)) {
+    return res.status(403).json({ ok: false, error: 'Invalid organizer code.' });
+  }
+
+  return res.json({ ok: true, role: 'organizer' });
 });
 
 app.get('/api/events', asyncHandler(async (req, res) => {
@@ -68,13 +92,13 @@ app.get('/api/events/:id', asyncHandler(async (req, res) => {
   res.json(event);
 }));
 
-app.post('/api/events', asyncHandler(async (req, res) => {
+app.post('/api/events', requireAdminCode, asyncHandler(async (req, res) => {
   const event = createEvent(req.body);
   emitEventsChanged('created', event);
   res.status(201).json(event);
 }));
 
-app.put('/api/events/:id', asyncHandler(async (req, res) => {
+app.put('/api/events/:id', requireAdminCode, asyncHandler(async (req, res) => {
   const event = updateEvent(req.params.id, req.body);
   if (!event) {
     return res.status(404).json({ error: 'Event not found.' });
@@ -83,7 +107,7 @@ app.put('/api/events/:id', asyncHandler(async (req, res) => {
   res.json(event);
 }));
 
-app.delete('/api/events/:id', asyncHandler(async (req, res) => {
+app.delete('/api/events/:id', requireAdminCode, asyncHandler(async (req, res) => {
   const deleted = deleteEvent(req.params.id);
   if (!deleted) {
     return res.status(404).json({ error: 'Event not found.' });
