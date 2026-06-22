@@ -375,3 +375,32 @@ After the first deploy, if Socket.IO/CORS fails because your frontend and backen
 ```txt
 CLIENT_ORIGIN=https://your-render-or-netlify-domain
 ```
+
+
+---
+
+## Fix for `Cannot GET /` on Render
+
+`Cannot GET /` means the Express backend started, but the React production build was not available at `client/dist/index.html`.
+
+Use these Render settings exactly:
+
+```txt
+Build Command: npm install && npm run build
+Start Command: npm start
+Node version: 20
+```
+
+The root `start` script now runs the frontend build before starting the backend:
+
+```json
+"start": "npm run build && npm --prefix server start"
+```
+
+If Render still shows `Cannot GET /`, open the latest deploy logs and check that this line appears during build/start:
+
+```txt
+vite build
+```
+
+If it does not appear, Render is still using old commands. Go to Render → Settings → Build & Deploy → update the commands, then use **Clear build cache & deploy**.

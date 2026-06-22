@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'node:fs';
 import cors from 'cors';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -99,12 +100,25 @@ io.on('connection', (socket) => {
 });
 
 const clientDistPath = path.resolve(__dirname, '../client/dist');
-app.use(express.static(clientDistPath));
+const clientIndexPath = path.join(clientDistPath, 'index.html');
+
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+}
+
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api')) return next();
-  res.sendFile(path.join(clientDistPath, 'index.html'), (error) => {
-    if (error) next();
-  });
+
+  if (fs.existsSync(clientIndexPath)) {
+    return res.sendFile(clientIndexPath);
+  }
+
+  return res.status(503).send(`
+    <h1>Frontend build not found</h1>
+    <p>The backend is running, but <code>client/dist/index.html</code> was not generated.</p>
+    <p>On Render, set Build Command to: <code>npm install && npm run build</code></p>
+    <p>Set Start Command to: <code>npm start</code></p>
+  `);
 });
 
 app.use((err, req, res, next) => {
