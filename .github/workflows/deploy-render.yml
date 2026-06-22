@@ -18,17 +18,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Use Node 20
+      - name: Use Node 24
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 24
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install client dependencies
+        run: npm --prefix client install
 
       - name: Build frontend
-        run: npm run build
+        run: npm --prefix client run build
 
       - name: Trigger Render deploy
         run: curl -fsSL -X POST "$RENDER_DEPLOY_HOOK"
